@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Company Matrix - {{ roster.name }}{% endblock %}
+{% block page_title %}{{ roster.name }} - Company Matrix{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Roster Control Header -->
+  <div class="card mb-3 shadow-sm border-0">
+    <div class="card-body p-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <!-- Title & Badges -->
+        <div>
+          <span class="badge bg-primary fs-6 px-3 py-2 me-2">Company-wide Master Roster</span>
+          <span class="badge bg-light text-dark border fs-6 px-3 py-2">
+            <i class="far fa-calendar-alt text-primary me-1"></i> {{ roster.name }}
+          </span>
+          <span class="badge {% if roster.conflicts_count == 0 %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} border ms-1 px-3 py-2">
+            {% if roster.conflicts_count == 0 %}
+              <i class="fas fa-check-circle me-1"></i> 100% Constraints Satisfied
+            {% else %}
+              <i class="fas fa-exclamation-triangle me-1"></i> {{ roster.conflicts_count }} Conflicts Detected
+            {% endif %}
+          </span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex flex-wrap gap-2">
+          <form method="POST" action="{{ url_for('roster.revalidate', roster_id=roster.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary btn-sm fw-semibold">
+              <i class="fas fa-sync-alt me-1"></i> Revalidate Rules
+            </button>
+          </form>
+          <a href="{{ url_for('roster.export_excel', roster_id=roster.id) }}" class="btn btn-success btn-sm fw-bold">
+            <i class="fas fa-file-excel me-1"></i> Export Excel (.xlsx)
+          </a>
+          <a href="{{ url_for('roster.export_csv', roster_id=roster.id) }}" class="btn btn-outline-dark btn-sm fw-semibold">
+            <i class="fas fa-file-csv me-1"></i> Export CSV
+          </a>
+        </div>
+      </div>
+
+      <!-- Multi-View Navigation Tabs -->
+      <ul class="nav nav-pills mt-3 pt-3 border-top">
+        <li class="nav-item">
+          <a class="nav-link active fw-bold" href="{{ url_for('roster.company_view', roster_id=roster.id) }}">
+            <i class="fas fa-building me-1"></i> 1. Company-wide View
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-secondary" href="{{ url_for('roster.pod_view', roster_id=roster.id) }}">
+            <i class="fas fa-layer-group me-1"></i> 2. Pod-wise View
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-secondary" href="{{ url_for('roster.brand_view', roster_id=roster.id) }}">
+            <i class="fas fa-tags me-1"></i> 3. Brand-wise View
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-secondary" href="{{ url_for('roster.process_view', roster_id=roster.id) }}">
+            <i class="fas fa-headset me-1"></i> 4. Process-wise View
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-secondary" href="{{ url_for('roster.employee_view', roster_id=roster.id) }}">
+            <i class="fas fa-user-clock me-1"></i> 5. Employee-wise View
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Shift Badges Legend & Filter Toolbar -->
+  <div class="card mb-3">
+    <div class="card-body p-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <!-- Legend -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="small fw-bold text-muted text-uppercase me-1">Legend:</span>
+          <span class="shift-pill shift-m" title="Morning (07:00 - 15:30)">M (Morning)</span>
+          <span class="shift-pill shift-a" title="Afternoon (15:00 - 23:30)">A (Afternoon)</span>
+          <span class="shift-pill shift-n" title="Night (23:00 - 07:30)">N (Night)</span>
+          <span class="shift-pill shift-g" title="General (09:30 - 18:30)">G (General)</span>
+          <span class="shift-pill shift-off" title="Weekly Off (Rest Day)">OFF</span>
+          <span class="shift-pill shift-leave" title="Approved Leave">LEAVE</span>
+          <span class="shift-pill shift-co" title="Compensatory Off">CO</span>
+          <span class="shift-pill shift-hol" title="Public Holiday">HOL</span>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="GET" class="d-flex align-items-center gap-2">
+          <select name="pod_id" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Operational Pods</option>
+            {% for p in pods %}
+              <option value="{{ p.id }}" {% if selected_pod == p.id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          {% if selected_pod %}
+            <a href="{{ url_for('roster.company_view', roster_id=roster.id) }}" class="btn btn-sm btn-light border text-danger">
+              <i class="fas fa-times"></i> Clear
+            </a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operational Conflicts Drawer (If any) -->
+  {% if conflicts %}
+  <div class="alert alert-danger mb-3 p-3 shadow-sm">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 class="mb-0 fw-bold text-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>{{ conflicts|length }} Conflict Records & Explanations
+      </h6>
+      <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#conflictCollapse">
+        Toggle Details
+      </button>
+    </div>
+    <div class="collapse show" id="conflictCollapse">
+      <div class="row g-2 mt-2">
+        {% for c in conflicts %}
+        <div class="col-md-6 col-lg-4">
+          <div class="p-2 bg-white rounded border border-danger-subtle small">
+            <div class="d-flex justify-content-between">
+              <span class="badge {% if c.resolved %}bg-secondary{% else %}bg-danger{% endif %}">{{ c.conflict_type }}</span>
+              <span class="badge {% if c.resolved %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                {{ 'Resolved' if c.resolved else 'Open' }}
+              </span>
+              <span class="text-muted">{{ c.date.strftime('%d-%b') }}</span>
+            </div>
+            <div class="mt-1 text-dark">{{ c.message }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Master High-Density Matrix Grid -->
+  <div class="matrix-container shadow-sm">
+    <table class="table table-matrix table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="sticky-col-1 text-start ps-3" style="min-width: 200px;">
+            <div class="text-muted small text-uppercase fw-bold">Employee</div>
+            <div class="text-dark fw-bold">Role & Pod</div>
+          </th>
+          {% for d in dates %}
+            <th class="{% if d.weekday() in (5, 6) %}weekend-col{% endif %}" style="min-width: 44px;">
+              <div class="day-header-num">{{ d.day }}</div>
+              <div class="day-header-dow">{{ d.strftime('%a')[:2] }}</div>
+            </th>
+          {% endfor %}
+          <th class="bg-light fw-bold text-dark px-2" style="min-width: 60px;">Work</th>
+          <th class="bg-light fw-bold text-dark px-2" style="min-width: 60px;">Off</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <!-- Sticky Employee Info Column -->
+          <td class="sticky-col-1 text-start ps-3">
+            <div class="fw-bold text-dark text-truncate" style="max-width: 180px;">
+              {{ emp.name }}
+            </div>
+            <div class="small text-muted d-flex align-items-center gap-1">
+              <span class="badge bg-light text-secondary border px-1">{{ emp.emp_code }}</span>
+              <span class="text-truncate" style="max-width: 100px;">{{ emp.role }}</span>
+            </div>
+          </td>
+
+          <!-- Shift Cells for Each Date in the Month -->
+          {% for d in dates %}
+            {% set a = grid.get(emp.id, {}).get(d) %}
+            <td class="{% if d.weekday() in (5, 6) %}weekend-col{% endif %} p-1">
+              {% if a %}
+                {% if a.assignment_type == 'WORK' %}
+                  {% set s_code = a.shift_type.code if a.shift_type else 'G' %}
+                  <span class="shift-pill shift-{{ s_code|lower }}"
+                        title="{{ emp.name }} | {{ a.shift_type.name if a.shift_type else 'General' }} | {{ a.brand.code if a.brand else '' }}-{{ a.process.code if a.process else '' }}"
+                        onclick="openEditModal({{ roster.id }}, {{ emp.id }}, '{{ emp.name|replace("'", "\\'") }}', '{{ emp.emp_code }}', '{{ d.strftime('%Y-%m-%d') }}', 'WORK', {{ a.brand_id or 'null' }}, {{ a.process_id or 'null' }}, {{ a.shift_type_id or 'null' }})">
+                    {{ s_code }}
+                  </span>
+                {% elif a.assignment_type == 'WEEKLY_OFF' %}
+                  <span class="shift-pill shift-off"
+                        title="{{ emp.name }} | Weekly Off"
+                        onclick="openEditModal({{ roster.id }}, {{ emp.id }}, '{{ emp.name|replace("'", "\\'") }}', '{{ emp.emp_code }}', '{{ d.strftime('%Y-%m-%d') }}', 'WEEKLY_OFF', null, null, null)">
+                    OFF
+                  </span>
+                {% elif a.assignment_type == 'LEAVE' %}
+                  <span class="shift-pill shift-leave"
+                        title="{{ emp.name }} | {{ a.notes or 'Approved Leave' }}"
+                        onclick="openEditModal({{ roster.id }}, {{ emp.id }}, '{{ emp.name|replace("'", "\\'") }}', '{{ emp.emp_code }}', '{{ d.strftime('%Y-%m-%d') }}', 'LEAVE', null, null, null)">
+                    LV
+                  </span>
+                {% elif a.assignment_type == 'COMP_OFF' %}
+                  <span class="shift-pill shift-co"
+                        title="{{ emp.name }} | Compensatory Off"
+                        onclick="openEditModal({{ roster.id }}, {{ emp.id }}, '{{ emp.name|replace("'", "\\'") }}', '{{ emp.emp_code }}', '{{ d.strftime('%Y-%m-%d') }}', 'COMP_OFF', null, null, null)">
+                    CO
+                  </span>
+                {% elif a.assignment_type == 'HOLIDAY' %}
+                  <span class="shift-pill shift-hol"
+                        title="Company Holiday"
+                        onclick="openEditModal({{ roster.id }}, {{ emp.id }}, '{{ emp.name|replace("'", "\\'") }}', '{{ emp.emp_code }}', '{{ d.strftime('%Y-%m-%d') }}', 'HOLIDAY', null, null, null)">
+                    HOL
+                  </span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted small">-</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+
+          <!-- Work & Off Total Stats -->
+          <td class="fw-bold text-primary">{{ emp_stats.get(emp.id, {}).get('work', 0) }}</td>
+          <td class="fw-bold text-secondary">{{ emp_stats.get(emp.id, {}).get('off', 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal Partial for Manual Editing & Backup Finder -->
+{% include "roster/edit_modal.html" %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/roster_edit.js') }}"></script>
+{% endblock %}

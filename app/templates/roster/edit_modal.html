@@ -1,0 +1,109 @@
+<!-- Shift Manual Edit Modal -->
+<div class="modal fade" id="editShiftModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header bg-light">
+        <div>
+          <h5 class="modal-title fw-bold text-dark"><i class="fas fa-edit text-primary me-2"></i>Modify Shift Assignment</h5>
+          <div class="small text-muted">
+            <span id="modalEmpName" class="fw-semibold text-primary"></span> | Date: <span id="modalDate" class="fw-semibold text-dark"></span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editShiftForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Assignment Type</label>
+            <select id="editAssignmentType" class="form-select" onchange="toggleWorkFields(); triggerValidation();">
+              <option value="WORK">Scheduled Work Shift</option>
+              <option value="WEEKLY_OFF">Weekly Off (Rest Day)</option>
+              <option value="LEAVE">Approved Leave (PL / SL)</option>
+              <option value="COMP_OFF">Compensatory Off (CO)</option>
+              <option value="HOLIDAY">Public Holiday Off</option>
+            </select>
+          </div>
+
+          <div id="workFieldsContainer">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Brand</label>
+                <select id="editBrandId" class="form-select" onchange="triggerValidation();">
+                  <option value="">Select Brand</option>
+                  {% for b in brands %}
+                    <option value="{{ b.id }}">{{ b.name }} ({{ b.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Process</label>
+                <select id="editProcessId" class="form-select" onchange="triggerValidation();">
+                  <option value="">Select Process</option>
+                  {% for p in processes %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Shift Timing</label>
+              <select id="editShiftId" class="form-select" onchange="triggerValidation();">
+                <option value="">Default General Shift</option>
+                {% for s in shift_types %}
+                  <option value="{{ s.id }}">{{ s.name }} ({{ s.start_time }} - {{ s.end_time }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Real-Time Dynamic Constraint Feedback -->
+          <div id="validationFeedback" style="display: none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer bg-light d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="openBackupFinder()">
+          <i class="fas fa-user-injured me-1"></i> Emergency Absence / Find Backup
+        </button>
+        <div>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="saveEditBtn" class="btn btn-primary btn-sm fw-bold" onclick="saveShiftEdit()">
+            <i class="fas fa-check me-1"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Emergency Unavailability & Backup Recommendation Modal -->
+<div class="modal fade" id="backupModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header bg-danger text-white">
+        <div>
+          <h5 class="modal-title fw-bold"><i class="fas fa-user-shield me-2"></i>Smart Backup Recommendation Engine</h5>
+          <div class="small text-white-50">
+            Emergency substitution for <span id="backupEmpName" class="fw-bold text-white"></span> on <span id="backupDate" class="fw-bold text-white"></span>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="alert alert-info py-2 mb-3">
+          <small>
+            <i class="fas fa-info-circle me-1"></i>
+            Candidates are ranked using multi-criteria scoring: <strong>Pod Alignment (+40)</strong>, <strong>Skill Certification (+25)</strong>, <strong>Current Monthly Workload</strong>, and strict check of <strong>Rest Days & Max Consecutive Days</strong>.
+          </small>
+        </div>
+
+        <div id="backupCandidatesList">
+          <!-- Filled dynamically via fetch to /api/roster/<id>/unavailability/candidates -->
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,45 @@
+# Python environments and bytecode
+venv/
+venv*/
+.venv/
+.venv*/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Local roster data, backups, and generated exports
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+backups/
+exports/
+
+# Logs, temporary files, and test/build caches
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.swp
+*.swo
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local editor and operating-system state
+.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

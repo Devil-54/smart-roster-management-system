@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Leaves & Holidays Management{% endblock %}
+{% block page_title %}Leaves, Comp-Offs & Public Holidays{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="fw-bold mb-1">Leaves, Comp-Offs & Holidays</h4>
+      <p class="text-muted small mb-0">Record planned leaves, compensatory offs earned, and company-wide public holidays.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addHolidayModal">
+        <i class="fas fa-calendar-plus me-1"></i> Add Public Holiday
+      </button>
+      <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#applyLeaveModal">
+        <i class="fas fa-plane-departure me-1"></i> Record Leave / Comp-Off
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Leaves & Comp-Offs -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light py-3">
+          <h5 class="fw-bold text-dark mb-0">
+            <i class="fas fa-umbrella-beach text-primary me-2"></i>Approved Leaves & Comp-Offs
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Employee</th>
+                  <th>Leave Type</th>
+                  <th>Date Range</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in leaves %}
+                <tr>
+                  <td>
+                    <div class="fw-bold text-dark">{{ l.employee.name }}</div>
+                    <small class="text-muted">{{ l.employee.emp_code }}</small>
+                  </td>
+                  <td>
+                    <span class="badge {% if l.leave_type == 'PL' %}bg-primary{% elif l.leave_type == 'SL' %}bg-danger{% elif l.leave_type == 'CO' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                      {% if l.leave_type == 'PL' %}Planned Leave
+                      {% elif l.leave_type == 'SL' %}Sick Leave
+                      {% elif l.leave_type == 'CO' %}Comp Off
+                      {% else %}Emergency Leave{% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="small fw-semibold text-dark">{{ l.start_date.strftime('%d %b %Y') }}</div>
+                    {% if l.start_date != l.end_date %}
+                      <div class="small text-muted">to {{ l.end_date.strftime('%d %b %Y') }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="small text-muted">{{ l.reason or 'Personal leave' }}</td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border">{{ l.status }}</span>
+                  </td>
+                  <td class="text-end">
+                    <form method="POST" action="{{ url_for('leaves.update_leave_status', leave_id=l.id) }}" class="d-inline">
+                      <input type="hidden" name="status" value="REJECTED">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Revoke Leave">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Public Holidays Reference -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light py-3">
+          <h5 class="fw-bold text-dark mb-0">
+            <i class="fas fa-calendar-day text-success me-2"></i>Public Holidays
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            {% for h in holidays %}
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+              <div>
+                <h6 class="mb-0 fw-bold text-dark">{{ h.name }}</h6>
+                <small class="text-muted">{{ h.date.strftime('%A, %d %B %Y') }}</small>
+              </div>
+              <span class="badge bg-purple px-2 py-1" style="background-color: #6f42c1; color: white;">
+                Mandatory Off
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Record Leave / Comp-Off -->
+<div class="modal fade" id="applyLeaveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('leaves.apply_leave') }}">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Record Employee Leave / Comp-Off</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Employee</label>
+            <select name="employee_id" class="form-select" required>
+              <option value="">Select Employee</option>
+              {% for emp in employees %}
+                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.emp_code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Leave Type</label>
+            <select name="leave_type" class="form-select" required>
+              <option value="PL">Planned Leave (PL)</option>
+              <option value="SL">Sick Leave (SL)</option>
+              <option value="CO">Compensatory Off (CO)</option>
+              <option value="EM">Emergency Absence (EM)</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Start Date</label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">End Date</label>
+              <input type="date" name="end_date" class="form-control" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Reason</label>
+            <input type="text" name="reason" class="form-control" placeholder="e.g. Personal reason">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary fw-bold">Record Leave</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Holiday -->
+<div class="modal fade" id="addHolidayModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('leaves.add_holiday') }}">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Add Public Holiday</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Holiday Name</label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. Independence Day">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Date</label>
+            <input type="date" name="date" class="form-control" required>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_mandatory" id="mandCheck" checked>
+            <label class="form-check-label fw-semibold" for="mandCheck">Mandatory Company-wide Holiday</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary fw-bold">Add Holiday</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

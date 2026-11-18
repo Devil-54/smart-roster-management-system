@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}{% if employee %}Edit Employee - {{ employee.name }}{% else %}Add New Employee{% endif %}{% endblock %}
+{% block page_title %}{% if employee %}Edit Employee Profile{% else %}Register New Employee{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <div class="mb-3">
+    <a href="{{ url_for('employees.list_employees') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i> Back to Directory
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Core Profile Info -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light py-3">
+          <h5 class="fw-bold text-dark mb-0">
+            <i class="fas fa-id-card text-primary me-2"></i>Employee Details
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Employee Code</label>
+                <input type="text" name="emp_code" class="form-control" value="{{ employee.emp_code if employee else '' }}" {% if employee %}readonly disabled{% else %}required placeholder="e.g. DST037"{% endif %}>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Full Name</label>
+                <input type="text" name="name" class="form-control" value="{{ employee.name if employee else '' }}" required placeholder="e.g. Rajesh Kumar">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Work Email</label>
+                <input type="email" name="email" class="form-control" value="{{ employee.email if employee else '' }}" required placeholder="employee@example.invalid">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Contact Phone</label>
+                <input type="text" name="phone" class="form-control" value="{{ employee.phone if employee else '' }}" placeholder="Optional">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Operational Role</label>
+                <select name="role" class="form-select" required>
+                  <option value="Associate" {% if employee and employee.role == 'Associate' %}selected{% endif %}>Associate</option>
+                  <option value="Senior Associate" {% if employee and employee.role == 'Senior Associate' %}selected{% endif %}>Senior Associate</option>
+                  <option value="Pod Lead" {% if employee and employee.role == 'Pod Lead' %}selected{% endif %}>Pod Lead</option>
+                  <option value="Trainee" {% if employee and employee.role == 'Trainee' %}selected{% endif %}>Trainee</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Operational Pod</label>
+                <select name="pod_id" class="form-select">
+                  <option value="">Unassigned</option>
+                  {% for p in pods %}
+                    <option value="{{ p.id }}" {% if employee and employee.pod_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Max Consecutive Days</label>
+                <input type="number" name="max_consecutive_days" class="form-control" value="{{ employee.max_consecutive_days if employee else 6 }}" min="3" max="7" required>
+                <small class="text-muted">Maximum consecutive days allowed before mandatory rest day.</small>
+              </div>
+
+              {% if employee %}
+              <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check form-switch mt-3">
+                  <input class="form-check-input" type="checkbox" name="is_active" id="isActiveSwitch" {% if employee.is_active %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="isActiveSwitch">Active in Rostering</label>
+                </div>
+              </div>
+              {% endif %}
+
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-primary fw-bold px-4">
+                  <i class="fas fa-save me-1"></i> {% if employee %}Update Employee{% else %}Save Employee{% endif %}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Skills & Certifications Manager (For Existing Employees) -->
+    {% if employee %}
+    <div class="col-lg-5">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light py-3">
+          <h5 class="fw-bold text-dark mb-0">
+            <i class="fas fa-certificate text-warning me-2"></i>Skill Certifications (Brand & Process)
+          </h5>
+        </div>
+        <div class="card-body p-3">
+          {% if employee.assignments %}
+            <div class="list-group list-group-flush mb-3">
+              {% for a in employee.assignments %}
+                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                  <div>
+                    <h6 class="mb-0 fw-bold text-dark">{{ a.brand.name }} &bull; {{ a.process.name }}</h6>
+                    <small class="text-muted">
+                      Skill Rating: <strong>{{ a.skill_level }}/5</strong>
+                      {% if a.is_primary %}
+                        <span class="badge bg-primary-subtle text-primary border ms-1">Primary</span>
+                      {% else %}
+                        <span class="badge bg-light text-secondary border ms-1">Secondary</span>
+                      {% endif %}
+                    </small>
+                  </div>
+                  <form method="POST" action="{{ url_for('employees.delete_skill', assignment_id=a.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove Certification">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-warning small mb-3">No skill certifications assigned yet.</div>
+          {% endif %}
+
+          <!-- Add Certification Form -->
+          <div class="p-3 bg-light rounded border">
+            <h6 class="fw-bold text-dark mb-2">Assign Domain Certification</h6>
+            <form method="POST" action="{{ url_for('employees.assign_skill', emp_id=employee.id) }}">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <select name="brand_id" class="form-select form-select-sm" required>
+                    <option value="">Brand</option>
+                    {% for b in brands %}
+                      <option value="{{ b.id }}">{{ b.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-6">
+                  <select name="process_id" class="form-select form-select-sm" required>
+                    <option value="">Process</option>
+                    {% for p in processes %}
+                      <option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="row g-2 mb-2 align-items-center">
+                <div class="col-6">
+                  <label class="small text-muted mb-0">Skill Level (1-5):</label>
+                  <select name="skill_level" class="form-select form-select-sm">
+                    <option value="3">Level 3 (Competent)</option>
+                    <option value="4">Level 4 (Advanced)</option>
+                    <option value="5">Level 5 (Expert / Lead)</option>
+                    <option value="2">Level 2 (Developing)</option>
+                    <option value="1">Level 1 (Trainee)</option>
+                  </select>
+                </div>
+                <div class="col-6 mt-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="is_primary" id="priCheck" checked>
+                    <label class="form-check-label small fw-semibold" for="priCheck">Primary Skill</label>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold">
+                <i class="fas fa-plus me-1"></i> Add Certification
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
